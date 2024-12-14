@@ -1,28 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Search } from '@/components/ui/search';
 import { Menu, X } from 'lucide-react';
-import { getCurrentUser, logout } from '@/lib/auth';
-import type { Models } from 'appwrite';
+import { logout } from '@/lib/auth';
+import { useAuth } from '@/contexts/auth-context';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [user, setUser] = useState<Models.User<Models.Preferences> | null>(null);
-
-  useEffect(() => {
-    const checkUser = async () => {
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
-    };
-    checkUser();
-  }, []);
+  const { user, checkAuth } = useAuth();
 
   const handleLogout = async () => {
     await logout();
-    setUser(null);
+    checkAuth();
   };
 
   return (
@@ -51,14 +43,9 @@ export function Navbar() {
                 </Button>
               </>
             ) : (
-              <>
-                <Button variant="ghost" asChild>
-                  <Link href="/auth/login">Login</Link>
-                </Button>
-                <Button asChild>
-                  <Link href="/auth/register">Register</Link>
-                </Button>
-              </>
+              <Link href="/auth/login">
+                <Button variant="ghost">Login</Button>
+              </Link>
             )}
           </div>
 
@@ -67,21 +54,17 @@ export function Navbar() {
             className="md:hidden"
             onClick={() => setIsOpen(!isOpen)}
           >
-            {isOpen ? (
-              <X className="h-6 w-6" />
-            ) : (
-              <Menu className="h-6 w-6" />
-            )}
+            {isOpen ? <X /> : <Menu />}
           </button>
         </div>
 
         {/* Mobile Navigation */}
         {isOpen && (
-          <div className="border-t py-4 md:hidden">
-            <div className="flex flex-col space-y-4">
+          <div className="md:hidden">
+            <div className="space-y-4 px-2 pb-3 pt-2">
               <Link
                 href="/manga"
-                className="text-foreground/60 transition-colors hover:text-foreground"
+                className="block text-foreground/60 transition-colors hover:text-foreground"
                 onClick={() => setIsOpen(false)}
               >
                 Manga
@@ -89,22 +72,30 @@ export function Navbar() {
               <Search />
               {user ? (
                 <>
-                  <span className="text-sm text-muted-foreground">
+                  <span className="block text-sm text-muted-foreground">
                     {user.name}
                   </span>
-                  <Button variant="ghost" onClick={handleLogout}>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      handleLogout();
+                      setIsOpen(false);
+                    }}
+                    className="w-full"
+                  >
                     Logout
                   </Button>
                 </>
               ) : (
-                <>
-                  <Button variant="ghost" asChild>
-                    <Link href="/auth/login">Login</Link>
+                <Link
+                  href="/auth/login"
+                  onClick={() => setIsOpen(false)}
+                  className="block"
+                >
+                  <Button variant="ghost" className="w-full">
+                    Login
                   </Button>
-                  <Button asChild>
-                    <Link href="/auth/register">Register</Link>
-                  </Button>
-                </>
+                </Link>
               )}
             </div>
           </div>

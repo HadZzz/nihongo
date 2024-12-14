@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Manga } from '@/lib/api';
-import { account } from '@/lib/appwrite';
 import { addBookmark, removeBookmark, getBookmark } from '@/lib/bookmarks';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
 
 interface MangaReaderProps {
   manga: Manga;
@@ -55,44 +55,42 @@ const NavigationButton = memo(function NavigationButton({
 });
 
 export function MangaReader({ manga }: MangaReaderProps) {
-  const [currentPage, setCurrentPage] = useState(0);
-  const [isBookmarked, setIsBookmarked] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { user } = useAuth();
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch user data
   useEffect(() => {
-    account.get().then(setUser).catch(console.error);
-  }, []);
+    const checkBookmark = async () => {
+      // Only check bookmark if user is logged in
+      if (!user) {
+        setIsBookmarked(false);
+        return;
+      }
 
-  // Check bookmark status
-  useEffect(() => {
-    if (user && manga.mal_id) {
-      getBookmark(manga.mal_id.toString())
-        .then((bookmark) => setIsBookmarked(!!bookmark))
-        .catch(console.error);
-    }
-  }, [user, manga.mal_id]);
+      try {
+        setIsLoading(true);
+        const bookmark = await getBookmark(manga.mal_id.toString());
+        setIsBookmarked(!!bookmark);
+      } catch (error) {
+        console.error('Error checking bookmark:', error);
+        setIsBookmarked(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  // Navigation handlers
-  const handlePrevPage = useCallback(() => {
-    setCurrentPage((prev) => Math.max(0, prev - 1));
-  }, []);
+    checkBookmark();
+  }, [manga.mal_id, user]);
 
-  const handleNextPage = useCallback(() => {
-    setCurrentPage((prev) => Math.min(manga.chapters || 1, prev + 1));
-  }, [manga.chapters]);
-
-  // Bookmark handler
   const handleBookmark = useCallback(async () => {
     if (!user) {
       router.push('/auth/login');
       return;
     }
 
-    setIsLoading(true);
     try {
+      setIsLoading(true);
       if (isBookmarked) {
         await removeBookmark(manga.mal_id.toString());
         setIsBookmarked(false);
@@ -101,7 +99,7 @@ export function MangaReader({ manga }: MangaReaderProps) {
           mangaId: manga.mal_id.toString(),
           title: manga.title,
           imageUrl: manga.images.jpg.image_url,
-          currentPage,
+          currentPage: 0,
         });
         setIsBookmarked(true);
       }
@@ -110,65 +108,35 @@ export function MangaReader({ manga }: MangaReaderProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [user, router, isBookmarked, manga, currentPage]);
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') {
-        handlePrevPage();
-      } else if (e.key === 'ArrowRight') {
-        handleNextPage();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [handlePrevPage, handleNextPage]);
+  }, [isBookmarked, manga, router, user]);
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold truncate">{manga.title}</h1>
-        <Button
-          onClick={handleBookmark}
-          variant={isBookmarked ? 'destructive' : 'default'}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            isBookmarked ? 'Remove Bookmark' : 'Add Bookmark'
-          )}
-        </Button>
+      <div className="mb-8">
+        <h1 className="mb-4 text-3xl font-bold">{manga.title}</h1>
+        {user && (
+          <div className="flex items-center space-x-4">
+            <Button 
+              onClick={handleBookmark}
+              disabled={isLoading}
+              variant={isBookmarked ? "secondary" : "outline"}
+            >
+              {isLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                isBookmarked ? 'Bookmarked' : 'Bookmark'
+              )}
+            </Button>
+          </div>
+        )}
       </div>
 
-      <div className="max-w-3xl mx-auto mb-8">
+      {manga.images?.jpg?.large_image_url && (
         <MangaImage
           src={manga.images.jpg.large_image_url}
-          alt={`${manga.title} - Page ${currentPage + 1}`}
+          alt={manga.title}
         />
-      </div>
-
-      <div className="flex justify-center items-center gap-4">
-        <NavigationButton
-          onClick={handlePrevPage}
-          disabled={currentPage === 0}
-        >
-          Previous Page
-        </NavigationButton>
-        
-        <span className="text-sm font-medium">
-          Page {currentPage + 1} of {manga.chapters || 1}
-        </span>
-        
-        <NavigationButton
-          onClick={handleNextPage}
-          disabled={currentPage === (manga.chapters || 1) - 1}
-        >
-          Next Page
-        </NavigationButton>
-      </div>
+      )}
     </div>
   );
 }

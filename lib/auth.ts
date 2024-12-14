@@ -63,7 +63,13 @@ export async function getCurrentUser() {
     try {
         const user = await account.get();
         return user;
-    } catch (error) {
+    } catch (error: any) {
+        // If error is due to user not being logged in, return null without logging
+        if (error.type === 'user_unauthorized' || 
+            (error.message && error.message.includes('missing scope'))) {
+            return null;
+        }
+        // Log other types of errors
         console.error('Error getting current user:', error);
         return null;
     }

@@ -120,7 +120,25 @@ export async function getManga(id: string): Promise<Manga | null> {
 }
 
 export async function getMangaById(id: number) {
-  const response = await fetch(`${JIKAN_API_BASE}/manga/${id}`);
-  const data = await response.json();
-  return data.data as Manga;
+  try {
+    const response = await fetch(`${JIKAN_API_BASE}/manga/${id}`, {
+      next: { revalidate: 0 },
+      // Adding longer timeout and keeping the connection alive
+      headers: {
+        'Connection': 'keep-alive'
+      },
+      // Adding cache control
+      cache: 'no-store'
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.data as Manga;
+  } catch (error) {
+    console.error('Error fetching manga:', error);
+    throw error;
+  }
 }
