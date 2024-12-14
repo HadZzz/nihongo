@@ -1,18 +1,16 @@
+import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import { Navbar } from '@/components/navbar';
-import { AuthProvider } from '@/contexts/auth-context';
-import { ThemeProvider } from '@/components/theme-provider';
-import { Toaster } from 'sonner';
-import { QueryProvider } from '@/components/providers/query-provider';
-import { Footer } from '@/components/footer';
 import './globals.css';
-import { Metadata } from 'next/types';
+import { ThemeProvider } from '@/components/theme-provider';
+import { Navbar } from '@/components/ui/navbar';
+import { Footer } from '@/components/ui/footer';
+import { Toaster } from 'sonner';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Manga Reader',
-  description: 'Read your favorite manga online',
+  title: '日本語 - Japanese Culture Explorer',
+  description: 'Explore Japanese culture, language, and traditions',
 };
 
 export default function RootLayout({
@@ -29,16 +27,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <QueryProvider>
-            <AuthProvider>
-              <div className="flex min-h-screen flex-col">
-                <Navbar />
-                <main className="flex-1">{children}</main>
-                <Footer />
-              </div>
-              <Toaster />
-            </AuthProvider>
-          </QueryProvider>
+          <div className="flex min-h-screen flex-col">
+            <Navbar />
+            <main className="flex-1">{children}</main>
+            <Footer />
+          </div>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>
